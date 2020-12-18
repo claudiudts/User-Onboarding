@@ -1,82 +1,89 @@
-import React, { useSate, useEffect } from 'react';
-import Form from './information/Form';
-import User from './information/User';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import Form from "./information/Form";
+import * as yup from "yup";
+import formSchema from "./information/formSchema";
+import axios from "axios";
 
-
-const initialFormValues = {
-  name: '',
-  email: '',
-  password: '',
-  terms: false
+const defaultValues = {
+  name: "",
+  email: "",
+};
+const defaultErrors = {
+  name: "",
+  email: "",
+  terms: "",
 };
 
-const initialFormErrors = {
-  name: '',
-  email: '',
-  password: ''
-};
-
-const initialUsers = []
-const initialDisabled = true
-
-export default function App() {
-  const [users, setUsers] = useSate(initialUsers)
-  const [formValues, setFormValues] = useState(initialFormValues)
-  const [formErrors, setFormErrors] = useSate(initialFormErrors)
-
-  const getUsers = () => {
-
-  };
-
-  const postNewUser = newUser => {
-
-  };
-
-
-  const inputChange = (name, value) => {
-
+function App() {
+  //Values of the form
+  const [formValues, setFormValues] = useState(defaultValues);
+  //Storing the values from the form
+  const [savedFormInfo, setSavedFormInfo] = useState([]);
+  //State for errors
+  const [errors, setErrors] = useState(defaultErrors);
+  //button disabled state
+  const [buttonDisabled, setButtonDisabled] = useState(true);
+  //State to verify the post worked
+  const [post, setPost] = useState([]);
+  //The function to handle the onChange inside of the form
+  const change = (evt) => {
+    //Turns the evt.target(The place we are interacting with on the form )
+    //Into something a bit more usable
+    const { name, value } = evt.target;
+    //Validates against schema
+    validate(name, value);
+    //sets the current state of form based off from what is in the form
     setFormValues({
       ...formValues,
-      [name]: value
-    })
+      [name]:
+        evt.target.type === "checkbox" ? evt.target.checked : evt.target.value,
+    });
   };
-
-  const formSubit = () => {
-    const newUser = {
+  //Function for submitting the data to state.
+  const submit = (evt) => {
+    //Prevents the default behavious of submit which is reloading the page
+    evt.preventDefault();
+    //adding api support with axios
+    axios.post("https://reqres.in/api/users", formValues).then((res) => {
+      setPost(res.data);
+      console.log(res.data);
+    });
+    //packaging an easy to use payload to put onto state
+    const newData = {
       name: formValues.name.trim(),
-      email: formValues.email.trim(),
-      password: formValues.password.trim(),
-      // terms:
-    }
+      email: formValues.email.trimEnd(),
+    };
+    //adding the data to state
+    setSavedFormInfo([...savedFormInfo, newData]);
+    setFormValues(defaultValues);
   };
-
-
-
+  const validate = (name, value) => {
+    yup
+      .reach(formSchema, name)
+      .validate(value)
+      .then((valid) => {
+        setErrors({ ...errors, [name]: "" });
+      })
+      .catch((err) => {
+        setErrors({ ...errors, [name]: err.errors[0] });
+      });
+  };
   useEffect(() => {
-    getUsers()
-  }, []);
-
-   
-
+    formSchema.isValid(formValues).then((valid) => {
+      setButtonDisabled(!valid);
+    });
+  }, [formValues]);
   return (
-    <div className='container'>
-      <header><h1>User Onboarding</h1></header>
-      <Form 
-        values={formValues}
-        change={inputChange}
-        submit={formSubit}
-        disabled={disabled}
-        errors={formErrors}
-        />
-
-        {
-          users.map(user => {
-            return (
-              <User key={user.id} details={user} />
-            )
-          })
-        }
+    <div className="App">
+      <Form
+        formValues={formValues}
+        change={change}
+        submit={submit}
+        buttonDisabled={buttonDisabled}
+        errors={errors}
+      />
     </div>
   );
 }
+
+export default App;
